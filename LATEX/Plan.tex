@@ -1,0 +1,342 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+
+\title{Plan}
+\author{Ewan Burns}
+\date{January 2026}
+\usepackage{subfiles}
+
+
+\begin{document}
+
+\maketitle
+\section{Working Proposal}
+\subsection{Project Overview}
+
+Partial Identification and Robust Reinforcement Learning Under Unobserved Confounding via Proximal Causal Inference
+
+This research develops a theoretical and algorithmic framework for \textbf{reinforcement learning (RL) under unobserved confounding} when full identification is impossible. The work extends proximal causal inference---a technique from causal inference that uses proxy variables to handle unmeasured confounders---into the sequential decision-making domain, specifically addressing cases where \textbf{proxy variables are imperfect or incomplete}.
+
+Traditional RL assumes that observed states capture all information needed for decision-making (the Markov property). However, in many real-world scenarios---such as healthcare treatment policies, autonomous systems, or offline RL from logged data---\textbf{hidden confounders} influence both actions and outcomes. Standard RL algorithms fail catastrophically in such settings because they learn biased policies that confuse correlation with causation.
+
+Existing approaches to confounded RL either:
+\begin{enumerate}
+    \item \textbf{Assume full observability} of confounders (unrealistic)
+    \item \textbf{Use instrumental variables or proxies} but require strong invertibility assumptions for full identification (restrictive)
+    \item \textbf{Ignore confounding} entirely (yields incorrect policies)
+\end{enumerate}
+
+This project addresses a critical gap: \textbf{What can we learn when confounding exists AND proxy variables are too weak for full identification?}
+
+\subsection{Core Problem Statement}
+
+\subsubsection{Setting: Confounded Markov Decision Processes (C-MDPs)}
+
+Consider an agent interacting with an environment over discrete time steps $t = 0, 1, 2, \ldots, T$:
+
+\begin{itemize}
+    \item \textbf{States} $S_t$: Observed environmental state
+    \item \textbf{Actions} $A_t$: Agent's decisions
+    \item \textbf{Rewards} $R_t$: Immediate feedback
+    \item \textbf{Hidden Confounders} $U_t$: Unobserved variables affecting transitions and rewards
+\end{itemize}
+
+The \textbf{true causal graph} includes $U_t$ influencing both $(S_{t+1}, R_t)$ and being correlated with past actions $A_{t-1}$ (due to behavioral policies depending on unobserved context).
+
+\paragraph{Standard RL assumption (violated here):}
+\[
+P(S_{t+1}, R_t \mid S_t, A_t) \quad \text{(Markov property)}
+\]
+
+\paragraph{Reality with confounding:}
+\[
+P(S_{t+1}, R_t \mid S_t, A_t, U_t) \quad \text{where } U_t \text{ is unobserved}
+\]
+
+\paragraph{Problem:} Estimating policy value $V^\pi(s) = \mathbb{E}\left[\sum_{t=0}^T \gamma^t R_t \mid S_0 = s, \pi\right]$ from observational data (e.g., offline logs from a behavioral policy $\pi_b$) is \textbf{biased} because:
+
+\[
+\mathbb{E}[R_t \mid S_t, A_t] \neq \mathbb{E}[R_t \mid \text{do}(A_t), S_t]
+\]
+
+The left side conflates the effect of $A_t$ with the spurious correlation induced by $U_t$.
+
+\subsection{Solution Approach: Proximal Causal Inference for RL}
+
+\subsubsection{Proximal Variables Framework}
+
+Drawing from \textbf{Tchetgen Tchetgen et al. (2020, 2024)}, we assume access to:
+
+\begin{itemize}
+    \item \textbf{Treatment proxy} $Z_t$: Observable variable influenced by $U_t$ but conditionally independent of $(S_{t+1}, R_t)$ given $(S_t, A_t, U_t)$
+    \item \textbf{Outcome proxy} $W_t$: Observable variable influenced by $U_t$ but conditionally independent of $A_t$ given $(S_t, U_t)$
+\end{itemize}
+
+\paragraph{Graphical representation:}
+\[
+Z_t \leftarrow U_t \rightarrow \{S_{t+1}, R_t, W_t\}, \quad A_t \perp W_t \mid S_t, U_t
+\]
+
+\paragraph{Examples:}
+\begin{itemize}
+    \item \textbf{Healthcare RL:} Patient's self-reported symptoms ($W$) and physician notes ($Z$) as proxies for unobserved disease severity ($U$)
+    \item \textbf{Autonomous driving:} Sensor noise patterns ($W$) and driver gaze history ($Z$) as proxies for unobserved driver intent ($U$)
+\end{itemize}
+
+\subsubsection{Identification via Bridge Functions}
+
+Under \textbf{completeness conditions} (a form of invertibility), proximal causal inference enables full identification of counterfactual distributions via \textbf{bridge functions} $h(\cdot), q(\cdot)$:
+
+\[
+\mathbb{E}[R_t \mid \text{do}(A_t = a), S_t = s] = \int h(z, a, s) q(w, s) \, dP(z, w \mid s)
+\]
+
+\textbf{Key insight:} Bridge functions satisfy functional equations that can be estimated from observational data \textit{without} observing $U_t$.
+
+\paragraph{Limitation of prior work (Venkatesh et al., 2025):}
+\begin{itemize}
+    \item Assumes \textbf{full identification} (strong completeness)
+    \item Provides \textbf{point estimates} of policy values
+    \item \textbf{Fails} when proxies are imperfect (e.g., weak instruments, measurement error)
+\end{itemize}
+
+\subsection{This Project's Novel Contribution: Partial Identification}
+
+\subsubsection{Core Theoretical Contribution}
+
+When completeness \textbf{does not hold} (proxies are imperfect), we derive \textbf{sharp bounds} on counterfactual policy values:
+
+\[
+V_{\text{lower}}^\pi(s) \leq V^\pi(s) \leq V_{\text{upper}}^\pi(s)
+\]
+
+\paragraph{Key results:}
+
+\begin{enumerate}
+    \item \textbf{Characterization of the identified set:} What range of policy values is consistent with:
+    \begin{itemize}
+        \item Observed data $P(S, A, Z, W, R)$
+        \item Proximal assumptions (graphical structure)
+        \item Relaxed completeness (partial invertibility)
+    \end{itemize}
+    
+    \item \textbf{Sharp bounds:} Tightest possible intervals without additional assumptions
+    
+    \item \textbf{Sequential decision-making bounds:} Extend partial ID to:
+    \begin{itemize}
+        \item \textbf{Q-function bounds:} $Q_{\text{lower}}^\pi(s, a) \leq Q^\pi(s, a) \leq Q_{\text{upper}}^\pi(s, a)$
+        \item \textbf{Value function propagation:} How bounds propagate through Bellman recursions
+        \item \textbf{Policy evaluation under partial ID}
+    \end{itemize}
+\end{enumerate}
+
+\paragraph{Mathematical framework:}
+
+Define the \textbf{identified set} for rewards:
+\[
+\mathcal{R}_{\text{ID}}(s, a) = \left\{ \mathbb{E}[R \mid \text{do}(A = a), S = s] : P(R, S, A, Z, W, U) \text{ consistent with data and proximal assumptions} \right\}
+\]
+
+We prove:
+\begin{itemize}
+    \item \textbf{Non-emptiness:} $\mathcal{R}_{\text{ID}}(s, a) \neq \emptyset$ under mild conditions
+    \item \textbf{Compactness:} Bounds are finite intervals $[\underline{R}(s,a), \overline{R}(s,a)]$
+    \item \textbf{Sharpness:} Cannot be tightened without stronger assumptions
+\end{itemize}
+
+\subsection{Algorithmic Contribution: Robust RL Under Partial Identification}
+
+\subsubsection{Robust Bellman Operators}
+
+Standard Bellman operator:
+\[
+(T^\pi V)(s) = \mathbb{E}_{a \sim \pi}[R(s, a) + \gamma \mathbb{E}_{s'}[V(s')]]
+\]
+
+\textbf{Our robust Bellman operator (worst-case):}
+\[
+(T_{\text{robust}}^\pi V)(s) = \min_{r \in \mathcal{R}_{\text{ID}}(s, \pi(s))} \left[ r + \gamma \min_{P \in \mathcal{P}_{\text{ID}}(s, \pi(s))} \mathbb{E}_{s' \sim P}[V(s')] \right]
+\]
+
+Where:
+\begin{itemize}
+    \item $\mathcal{R}_{\text{ID}}(s, a)$: Identified set for rewards
+    \item $\mathcal{P}_{\text{ID}}(s, a)$: Identified set for transition distributions
+\end{itemize}
+
+\paragraph{Properties:}
+\begin{itemize}
+    \item \textbf{Contraction mapping} (under suitable conditions)
+    \item \textbf{Converges to conservative value function} (lower bound on true value)
+    \item \textbf{Enables robust policy optimization}
+\end{itemize}
+
+\subsubsection{Interval Value Iteration}
+
+Maintain \textbf{interval-valued estimates}:
+\[
+\underline{V}^{(k)}(s) \leq V^\pi(s) \leq \overline{V}^{(k)}(s)
+\]
+
+\paragraph{Update rules:}
+\begin{align}
+\underline{V}^{(k+1)}(s) &= \min_{a \in \mathcal{A}} \left[ \underline{R}(s, a) + \gamma \sum_{s'} \underline{P}(s' \mid s, a) \underline{V}^{(k)}(s') \right] \\
+\overline{V}^{(k+1)}(s) &= \max_{a \in \mathcal{A}} \left[ \overline{R}(s, a) + \gamma \sum_{s'} \overline{P}(s' \mid s, a) \overline{V}^{(k)}(s') \right]
+\end{align}
+
+\paragraph{Guarantees:}
+\begin{itemize}
+    \item Bounds converge to true partial identification bounds
+    \item Computationally tractable (convex optimization)
+    \item Applicable to model-based and model-free settings
+\end{itemize}
+
+\subsubsection{Minimax Robust Policy Optimization}
+
+Find policy $\pi^*$ that maximizes \textbf{worst-case value} over identified set:
+\[
+\pi^* = \arg\max_\pi \min_{(R, P) \in \mathcal{ID}} V^\pi(s_0; R, P)
+\]
+
+\paragraph{Algorithms:}
+\begin{itemize}
+    \item \textbf{Robust Q-learning:} Pessimistic updates using lower bounds
+    \item \textbf{Robust policy gradients:} Gradient ascent on worst-case objective
+    \item \textbf{Distributionally robust RL:} Uncertainty sets derived from partial ID bounds
+\end{itemize}
+
+\subsection{Comparison with Related Work}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|p{4cm}|p{5cm}|p{5cm}|}
+\hline
+\textbf{Aspect} & \textbf{Venkatesh et al. (2025)} & \textbf{This Project} \\
+\hline
+Identification assumption & Full ID (strong completeness) & Partial ID (weak completeness) \\
+\hline
+When proxies are imperfect & Method fails & Bounds still valid \\
+\hline
+Output & Point estimate of $V^\pi(s)$ & Interval $[V_{\text{lower}}^\pi, V_{\text{upper}}^\pi]$ \\
+\hline
+Planning & Standard Bellman operator & Robust Bellman operator \\
+\hline
+Optimization & Maximize expected value & Maximize worst-case value \\
+\hline
+Robustness & None (assumes correct identification) & Conservative guarantees \\
+\hline
+Theoretical novelty & Proximal ID for MBRL & Partial ID theory for sequential decisions \\
+\hline
+\end{tabular}
+\caption{Comparison with Venkatesh et al. (2025)}
+\end{table}
+
+\textbf{Key differentiation:} Venkatesh handles the ``easy case'' (good proxies, full ID). This project handles the \textbf{``hard case''} (imperfect proxies, partial ID, robustness).
+
+\subsection{Experimental Validation}
+
+\subsubsection{Phase 1: Toy Environments (Proof of Concept)}
+
+\paragraph{Environments:}
+\begin{enumerate}
+    \item \textbf{Tabular GridWorld with latent confounders:}
+    \begin{itemize}
+        \item Observable state: Agent position
+        \item Hidden confounder: Wind direction affecting transitions
+        \item Proxies: Noisy sensors for wind
+    \end{itemize}
+    
+    \item \textbf{CartPole with confounded dynamics:}
+    \begin{itemize}
+        \item Observable state: Cart position, pole angle
+        \item Hidden confounder: Unobserved friction coefficient
+        \item Proxies: Motor current (treatment proxy), vibration (outcome proxy)
+    \end{itemize}
+\end{enumerate}
+
+\paragraph{Experiments:}
+\begin{itemize}
+    \item \textbf{Bound tightness:} Compare $V_{\text{upper}} - V_{\text{lower}}$ under varying proxy quality
+    \item \textbf{Comparison with Venkatesh:} Show their point estimates \textbf{fail} when completeness is violated; our bounds remain valid
+    \item \textbf{Robust policy performance:} Policies optimized via minimax outperform naive policies when proxies are weak
+\end{itemize}
+
+\subsubsection{Phase 2: Realistic Benchmark (Stretch Goal)}
+
+\paragraph{D4RL offline RL tasks (Hopper/Walker):}
+\begin{itemize}
+    \item Inject latent confounding (hidden ``damage'' state affecting both dynamics and behavioral policy)
+    \item Use engineered proxies (actuator delay patterns, sensor noise)
+    \item Show: Robust RL policies transfer better to test environments with different confounding levels
+\end{itemize}
+
+\subsection{Theoretical Significance}
+
+This project establishes \textbf{partial identification as a principled framework for RL under confounding}. Key contributions to causal inference and RL theory:
+
+\begin{enumerate}
+    \item \textbf{First partial ID results for sequential decision-making} with proxies
+    \item \textbf{Sharp characterization} of what can/cannot be learned about policy values
+    \item \textbf{Algorithmic bridge} between partial identification (causal inference) and robust optimization (RL)
+    \item \textbf{Sensitivity analysis tools:} Quantify how bounds widen as proxy quality degrades
+\end{enumerate}
+
+\paragraph{Relation to broader literature:}
+\begin{itemize}
+    \item Extends \textbf{Manski's partial identification} framework to RL
+    \item Generalizes \textbf{Imbens-Angrist (IV) methods} to sequential settings with weak instruments
+    \item Provides \textbf{worst-case guarantees} complementary to average-case RL
+\end{itemize}
+
+\subsection{Practical Impact}
+
+\paragraph{Application domains:}
+
+\begin{enumerate}
+    \item \textbf{Healthcare:} Treatment policies from observational medical records where disease severity is unobserved
+    \item \textbf{Offline RL:} Safe policy learning from logged data with unmeasured user context
+    \item \textbf{Autonomous systems:} Robust control under sensor miscalibration or adversarial confounding
+    \item \textbf{Personalized recommendations:} Policies robust to unmeasured user preferences
+\end{enumerate}
+
+\paragraph{Value proposition:}
+\begin{itemize}
+    \item \textbf{Honest uncertainty quantification:} ``Policy value is between X and Y'' is more actionable than biased point estimate
+    \item \textbf{Safe deployment:} Conservative policies avoid catastrophic failures from confounding bias
+    \item \textbf{Robustness guarantees:} Performance degradation is bounded even if assumptions are partially violated
+\end{itemize}
+
+\subsection{Open Questions and Extensions}
+
+\begin{enumerate}
+    \item \textbf{Sample complexity:} How many samples needed to estimate bounds accurately?
+    \item \textbf{Active learning:} Can we query data to shrink identified sets?
+    \item \textbf{Model-free extensions:} Partial ID for off-policy evaluation, policy gradients
+    \item \textbf{Multi-agent settings:} Partial ID when other agents' confounders are unobserved
+    \item \textbf{Continuous state/action spaces:} Functional approximation for bounds
+\end{enumerate}
+
+\subsection{Project Timeline and Deliverables}
+
+\begin{itemize}
+    \item \textbf{Jan--March 2026:} Theory development (identification, bounds, Bellman operators)
+    \item \textbf{April 2026:} MSc thesis submission (theoretical chapters)
+    \item \textbf{May--July 2026:} Algorithm implementation + toy experiments
+    \item \textbf{August--Sept 2026:} Paper writing + realistic benchmarks (optional)
+    \item \textbf{Feb 2027:} Target ICML 2027 submission
+\end{itemize}
+
+\paragraph{Expected outputs:}
+\begin{itemize}
+    \item MSc thesis (UCL)
+    \item Conference paper (ICML/NeurIPS 2027)
+    \item Open-source code for robust RL algorithms
+\end{itemize}
+
+\subsection{Conclusion}
+
+This project develops the \textbf{first theoretical and algorithmic framework for reinforcement learning under partial identification with proximal causal inference}. By relaxing the restrictive completeness assumptions of prior work, we enable \textbf{robust policy learning even when proxy variables are imperfect}---a critical step toward deploying RL in real-world confounded environments.
+
+The work sits at the intersection of \textbf{causal inference} (proximal methods, partial ID), \textbf{robust optimization} (minimax RL), and \textbf{sequential decision-making} (MDPs, Bellman equations), contributing novel theory and practical algorithms to all three communities.
+
+\end{document}
