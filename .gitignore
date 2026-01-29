@@ -1,0 +1,24 @@
+# LaTeX auxiliary files (applies to all .tex projects)
+*.aux
+*.log
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+*.out
+*.toc
+*.lof
+*.lot
+*.bbl
+*.blg
+*.bcf
+*.run.xml
+*.nav
+*.snm
+*.vrb
+*.idx
+*.ilg
+*.ind
+*.pdf
+
+# Keep .tex files (they're not ignored by default, this is just a reminder)
+# !*.tex
