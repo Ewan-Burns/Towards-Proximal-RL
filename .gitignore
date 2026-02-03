@@ -22,3 +22,8 @@
 
 # Keep .tex files (they're not ignored by default, this is just a reminder)
 # !*.tex
+
+# Editor/AI config
+.cursorrules
+.vscode/
+CLAUDE.md
